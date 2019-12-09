@@ -7,7 +7,7 @@ import * as filters from "./filters";
 for (let f of Object.keys(filters)) {
 	Vue.filter(f, filters[f]);
 }
-
+// 全局共用方法
 Vue.mixin({
 	methods: {
 		makePath

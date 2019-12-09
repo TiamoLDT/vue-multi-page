@@ -1,7 +1,8 @@
 <template>
   <div id="app">
     <h3>index page</h3>
-    <button @click="jumpPage">跳转hello.html</button>
+    <h3>过滤器测试 --- {{today|dateFormat}}</h3>
+    <button @click="jumpPage">跳转demo.html</button>
     <div id="nav">
       <router-link to="/">Home</router-link> |
       <router-link to="/about">About</router-link>
@@ -19,7 +20,7 @@ export default {
   },
   methods:{
     jumpPage(){
-      location.href=this.makePath('hello','/hello')
+      location.href=this.makePath('demo','/')
     }
   }
 }

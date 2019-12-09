@@ -1,8 +1,10 @@
 <template>
   <div id="app">
-    <h3>hello page</h3>
-    <h3>过滤器测试 --- {{today|dateFormat}}</h3>
+    <h3>demo page</h3>
     <button @click="jumpPage">跳转index.html</button>
+    <!-- <div id="nav">
+      <router-link to="/vuex">vuex</router-link>
+    </div> -->
     <router-view/>
   </div>
 </template>
@@ -10,7 +12,7 @@
 export default {
   data(){
     return {
-      msg:'hello',
+      msg:'demo',
       today:new Date()
     }
   },
@@ -28,5 +30,16 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
+}
+#nav {
+  padding: 30px;
+  a {
+    font-weight: bold;
+    color: #2c3e50;
+
+    &.router-link-exact-active {
+      color: #42b983;
+    }
+  }
 }
 </style>

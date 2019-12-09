@@ -1,14 +1,18 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
-import Hello from '../hello.vue'
 
 Vue.use(VueRouter)
 
 const routes = [
   {
-    path: '/hello',
-    name: 'hello',
-    component: Hello
+    path: '/',
+    name: 'home',
+    redirect: '/demo-vuex'
+  },
+  {
+    path: '/demo-vuex',
+    name: 'demo-vuex',
+    component: () => import(/* webpackChunkName: "demo-vuex" */ './component/demo-vuex.vue')
   }
 ]
 
