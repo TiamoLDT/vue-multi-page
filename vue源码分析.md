@@ -1,8 +1,6 @@
 ```javascript
 
-vue面试问题汇总
-
-2.0版本相关问题
+vue2.0版本相关问题
 
 事件循环大致分为以下几个步骤：
 所有同步任务都在主线程上执行，形成一个执行栈（execution context stack）。
@@ -12,19 +10,8 @@ vue面试问题汇总
 https://vue-js.com/learn-vue/instanceMethods/lifecycle.html#_3-vm-nexttick
 
 
-vue连续更改同一个属性的值 批量更新？
-当我们更新了message的数据后，立即获取vm.$el.innerHTML，发现此时获取到的还是更新之前的数据：123。但是当我们使用nextTick来获取vm.$el.innerHTML时，此时就可以获取到更新后的数据了。这是为什么呢？
-这里就涉及到Vue中对DOM的更新策略了，Vue 在更新 DOM 时是异步执行的。只要侦听到数据变化，Vue 将开启一个事件队列，并缓冲在同一事件循环中发生的所有数据变更。如果同一个 watcher 被多次触发，只会被推入到事件队列中一次。这种在缓冲时去除重复数据对于避免不必要的计算和 DOM 操作是非常重要的。然后，在下一个的事件循环“tick”中，Vue 刷新事件队列并执行实际 (已去重的) 工作
-
-
-$set 
-最终还是通过 defineReactive(ob.value, key, val)为响应式对象添加新的属性 通过ob.dep.notify()通知更新 
-通过 splice ------》 target.splice(key, 1, val)  为数组添加元素 数组方法都是重写覆盖默认方法的 重写方法内部调用更新
-
-
-
 为什么使用虚拟dom？
-每个组件只有一个watcher对象 当数据改变时 触发对应的更新时 
+每个组件对应只有一个render watcher对象 当数据改变时 触发对应的更新时 
 并不知道更新的方法具体影响了那些页面更新 所以需要vnode去进行diff比对
 
 
@@ -34,6 +21,9 @@ $set
 销毁阶段都干了什么？
 我们知道了，当调用了实例上的vm.$destory方法后，实例就进入了销毁阶段，在该阶段所做的主要工作是将当前的Vue实例从其父级实例中删除，取消当前实例上的所有依赖追踪并且移除实例上的所有事件监听器。
 
+
+当我们更新了message的数据后，立即获取vm.$el.innerHTML，发现此时获取到的还是更新之前的数据：123。但是当我们使用nextTick来获取vm.$el.innerHTML时，此时就可以获取到更新后的数据了。这是为什么呢？
+这里就涉及到Vue中对DOM的更新策略了，Vue 在更新 DOM 时是异步执行的。只要侦听到数据变化，Vue 将开启一个事件队列，并缓冲在同一事件循环中发生的所有数据变更。如果同一个 watcher 被多次触发，只会被推入到事件队列中一次。这种在缓冲时去除重复数据对于避免不必要的计算和 DOM 操作是非常重要的。然后，在下一个的事件循环“tick”中，Vue 刷新事件队列并执行实际 (已去重的) 工作
 
 
 ##### vue nextTick如何实现（）
@@ -51,6 +41,8 @@ $set
 3. 事件循环到了微任务或者宏任务，执行函数依次执行callbacks中的回调。
 
 参考 https://juejin.im/post/6869947649248722952
+
+
 
 ##### vue diff算法实现 
 https://github.com/aooy/blog/issues/2
@@ -99,7 +91,7 @@ watcher 被添加进依赖时机？
 除了computedwatcher 其他的都是在new Watcher时 调用get方法时 读取了依赖的属性时 参照下行
 回顾一下我们在数据侦测篇文章中介绍Watcher类的时候，Watcher类构造函数的第二个参数支持两种类型：函数和数据路径（如a.b.c）。如果是数据路径，会根据路径去读取这个数据；如果是函数，会执行这个函数。一旦读取了数据或者执行了函数，就会触发数据或者函数内数据的getter方法，而在getter方法中会将watcher实例添加到该数据的依赖列表中，当该数据发生变化时就会通知依赖列表中所有的依赖，依赖接收到通知后通知更新视图
 
-##### vue computer  --->renderdwatcher
+##### vue watch  --->renderdwatcher
 $mount挂载的时候  开启对模板中数据（状态）的监控
 updateComponent = () => {
         vm._update(vm._render(), hydrating)
@@ -116,7 +108,95 @@ new Watcher(vm, updateComponent, noop, {
 computedwatcher userwatcher 能有多个
 
 ##### computer  --->computedwatcher
+function initComputed (vm: Component, computed: Object) {
+  // $flow-disable-line
+  const watchers = vm._computedWatchers = Object.create(null)
+  // computed properties are just getters during SSR
+  const isSSR = isServerRendering()
 
+  for (const key in computed) {
+    const userDef = computed[key]
+    const getter = typeof userDef === 'function' ? userDef : userDef.get
+    if (process.env.NODE_ENV !== 'production' && getter == null) {
+      warn(
+        `Getter is missing for computed property "${key}".`,
+        vm
+      )
+    }
+
+    if (!isSSR) {
+      // create internal watcher for the computed property.
+      watchers[key] = new Watcher(
+        vm,
+        getter || noop,
+        noop,
+        computedWatcherOptions
+      )
+    }
+
+    // component-defined computed properties are already defined on the
+    // component prototype. We only need to define computed properties defined
+    // at instantiation here.
+    if (!(key in vm)) {
+      defineComputed(vm, key, userDef)
+    } else if (process.env.NODE_ENV !== 'production') {
+      if (key in vm.$data) {
+        warn(`The computed property "${key}" is already defined in data.`, vm)
+      } else if (vm.$options.props && key in vm.$options.props) {
+        warn(`The computed property "${key}" is already defined as a prop.`, vm)
+      } else if (vm.$options.methods && key in vm.$options.methods) {
+        warn(`The computed property "${key}" is already defined as a method.`, vm)
+      }
+    }
+  }
+}
+
+export function defineComputed (
+  target: any,
+  key: string,
+  userDef: Object | Function
+) {
+  const shouldCache = !isServerRendering()
+  if (typeof userDef === 'function') {
+    sharedPropertyDefinition.get = shouldCache
+      ? createComputedGetter(key)
+      : createGetterInvoker(userDef)
+    sharedPropertyDefinition.set = noop
+  } else {
+    sharedPropertyDefinition.get = userDef.get
+      ? shouldCache && userDef.cache !== false
+        ? createComputedGetter(key)
+        : createGetterInvoker(userDef.get)
+      : noop
+    sharedPropertyDefinition.set = userDef.set || noop
+  }
+  if (process.env.NODE_ENV !== 'production' &&
+      sharedPropertyDefinition.set === noop) {
+    sharedPropertyDefinition.set = function () {
+      warn(
+        `Computed property "${key}" was assigned to but it has no setter.`,
+        this
+      )
+    }
+  }
+  Object.defineProperty(target, key, sharedPropertyDefinition)
+}
+/* computed watcher关键点 添加进依赖 + 取值*/
+function createComputedGetter (key) {
+  return function computedGetter () {
+    const watcher = this._computedWatchers && this._computedWatchers[key]
+    if (watcher) {
+      if (watcher.dirty) {    //watcher.dirty 为true表示计算取值  false 缓存取值 
+        watcher.evaluate()  
+        //调用该方法evaluate() 去调用watcher里的get方法 同时设置watcher.dirty=false  调用更新函数watcher.update重新设置dirty=true
+      }
+      if (Dep.target) {
+        watcher.depend()
+      }
+      return watcher.value
+    }
+  }
+}
 
 ##### watch  --->userwatcher
 1、初始化状态 获取到传递的watch配置对象 传递给initWatch
@@ -157,6 +237,29 @@ function createWatcher (vm, expOrFn, handler, options) {
   //最后将 key 函数 options选项传给$watch去创建对应的watch对象
   return vm.$watch(expOrFn, handler, options)  // 封装
 }
+//最后还是调用new Watcher()
+ Vue.prototype.$watch = function (
+    expOrFn: string | Function,
+    cb: any,
+    options?: Object
+  ): Function {
+    const vm: Component = this
+    if (isPlainObject(cb)) {
+      return createWatcher(vm, expOrFn, cb, options)
+    }
+    options = options || {}
+    options.user = true
+    const watcher = new Watcher(vm, expOrFn, cb, options)
+    if (options.immediate) {
+      const info = `callback for immediate watcher "${watcher.expression}"`
+      pushTarget()
+      invokeWithErrorHandling(cb, vm, [watcher.value], vm, info)
+      popTarget()
+    }
+    return function unwatchFn () {
+      watcher.teardown()
+    }
+  }
 
 
 ##### $on 
@@ -204,16 +307,21 @@ Vue.prototype.$once = function (event, fn) {
     return vm
 }
 
+##### vue  $set 
+最终还是通过 defineReactive(ob.value, key, val)为响应式对象添加新的属性 通过ob.dep.notify()通知更新 
+通过 splice ------》 target.splice(key, 1, val)  为数组添加元素 数组方法都是重写覆盖默认方法的 重写方法内部调用更新
+
 
 
 ##### Vue.use 
 Vue.use = function (plugin) {
+  // 首先定义了一个变量installedPlugins,该变量初始值是一个空数组，用来存储已安装过的插件。首先判断传入的插件是否存在于installedPlugins数组中（即已被安装过），如果存在的话，则直接返回，防止重复安装
     const installedPlugins = (this._installedPlugins || (this._installedPlugins = []))
     if (installedPlugins.indexOf(plugin) > -1) {
         return this
     }
 
-    // additional parameters
+    // 接下来获取到传入的其余参数，并且使用toArray方法将其转换成数组，同时将Vue插入到该数组的第一个位置，这是因为在后续调用install方法时，Vue必须作为第一个参数传入
     const args = toArray(arguments, 1)
     args.unshift(this)
     if (typeof plugin.install === 'function') {
@@ -224,6 +332,40 @@ Vue.use = function (plugin) {
     installedPlugins.push(plugin)
     return this
 }
+
+
+
+##### directive、filter、component
+export const ASSET_TYPES = [
+  'component',
+  'directive',
+  'filter'
+]
+Vue.options = Object.create(null)
+ASSET_TYPES.forEach(type => {
+    Vue.options[type + 's'] = Object.create(null)
+})
+
+ASSET_TYPES.forEach(type => {
+    Vue[type] = function (id,definition) {
+        if (!definition) {
+            return this.options[type + 's'][id]
+        } else {
+            if (process.env.NODE_ENV !== 'production' && type === 'component') {
+                validateComponentName(id)
+            }
+            if (type === 'component' && isPlainObject(definition)) {
+                definition.name = definition.name || id
+                definition = this.options._base.extend(definition)
+            }
+            if (type === 'directive' && typeof definition === 'function') {
+                definition = { bind: definition, update: definition }
+            }
+            this.options[type + 's'][id] = definition
+            return definition
+        }
+    }
+})
 
 ##### vue filter
 1、定义filter的时候 会将对应的filter都保存在vm.$options.filters中 
@@ -373,6 +515,11 @@ export default {
 
   created () {
     //this.cache是一个对象，用来存储需要缓存的组件，它将以如下形式存储：
+//    this.cache = {
+//      'key1':'组件1',
+//      'key2':'组件2',
+//       // ...
+//    }
     this.cache = Object.create(null) 
     //this.keys是一个数组，用来存储每个需要缓存的组件的key，即对应this.cache对象中的键值
     this.keys = []
@@ -487,6 +634,66 @@ Vue.mixin({
 
 
 ##### vue 响应式数据原理
+export function defineReactive (
+  obj: Object,
+  key: string,
+  val: any,
+  customSetter?: ?Function,
+  shallow?: boolean
+) {
+  const dep = new Dep()
+
+  const property = Object.getOwnPropertyDescriptor(obj, key)
+  if (property && property.configurable === false) {
+    return
+  }
+
+  // cater for pre-defined getter/setters
+  const getter = property && property.get
+  const setter = property && property.set
+  if ((!getter || setter) && arguments.length === 2) {
+    val = obj[key]
+  }
+
+  let childOb = !shallow && observe(val)
+  Object.defineProperty(obj, key, {
+    enumerable: true,
+    configurable: true,
+    get: function reactiveGetter () {
+      const value = getter ? getter.call(obj) : val
+      if (Dep.target) {
+        dep.depend()
+        if (childOb) {
+          childOb.dep.depend()
+          if (Array.isArray(value)) {
+            dependArray(value)
+          }
+        }
+      }
+      return value
+    },
+    set: function reactiveSetter (newVal) {
+      const value = getter ? getter.call(obj) : val
+      /* eslint-disable no-self-compare */
+      if (newVal === value || (newVal !== newVal && value !== value)) {
+        return
+      }
+      /* eslint-enable no-self-compare */
+      if (process.env.NODE_ENV !== 'production' && customSetter) {
+        customSetter()
+      }
+      // #7981: for accessor properties without setter
+      if (getter && !setter) return
+      if (setter) {
+        setter.call(obj, newVal)
+      } else {
+        val = newVal
+      }
+      childOb = !shallow && observe(newVal)
+      dep.notify()
+    }
+  })
+}
 
 参考 https://segmentfault.com/a/1190000006599500#articleHeader4
 
@@ -508,12 +715,6 @@ reactive(),用于将对象、数组这些复杂类型转换为响应式对象
 toRefs(),用于将响应式对象 - props对象 里的所有属性转换为响应式对象，转换完结果类似ref()
 toRef(),跟toRefs类似，不过一个是转换对象里所有属性，一个是转换指定的单个属性
 
-
-wacth computed
- 
-单文件组建data为什么在一个函数中返回
-
-插件的实现 
 
 
 ```
