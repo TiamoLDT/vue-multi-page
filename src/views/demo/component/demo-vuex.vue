@@ -109,12 +109,13 @@ export default {
       //直接获取
       return this.$store.getters.doneTodos;
     },
-    ...mapGetters({
-      doneTodos1: "doneTodos" // 把 `this.doneTodo` 映射为 `this.$store.getters.doneTodos
-    }),
     ...mapGetters([
       "doneTodos2" //跟上行比较没有映射情况
-    ])
+    ]),
+    ...mapGetters({
+      doneTodos1: "doneTodos" // 把 `this.doneTodo` 映射为 `this.$store.getters.doneTodos
+    })
+    
   }
 };
 </script>
