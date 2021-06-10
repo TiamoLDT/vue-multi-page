@@ -2,6 +2,11 @@
 
 vue2.0版本相关问题
 
+new Vue（）都做了些什么？
+调用原型上的_init方法，合并全局属性配置，初始化生命周期-$parent,$child,初始化渲染，调用 beforeCreate 钩子函数，初始化state状态（初始化了data、props、computed、watcher）
+调用created钩子函数。最后挂载到指定dom节点。
+
+
 事件循环大致分为以下几个步骤：
 所有同步任务都在主线程上执行，形成一个执行栈（execution context stack）。
 主线程之外，还存在一个"任务队列"（task queue）。只要异步任务有了运行结果，就在"任务队列"之中放置一个事件。
@@ -10,7 +15,7 @@ vue2.0版本相关问题
 https://vue-js.com/learn-vue/instanceMethods/lifecycle.html#_3-vm-nexttick
 
 
-为什么使用虚拟dom？
+为什么使用虚拟dom diff+watcher？
 每个组件对应只有一个render watcher对象 当数据改变时 触发对应的更新时 
 并不知道更新的方法具体影响了那些页面更新 所以需要vnode去进行diff比对
 
@@ -23,13 +28,14 @@ https://vue-js.com/learn-vue/instanceMethods/lifecycle.html#_3-vm-nexttick
 
 
 当我们更新了message的数据后，立即获取vm.$el.innerHTML，发现此时获取到的还是更新之前的数据：123。但是当我们使用nextTick来获取vm.$el.innerHTML时，此时就可以获取到更新后的数据了。这是为什么呢？
-这里就涉及到Vue中对DOM的更新策略了，Vue 在更新 DOM 时是异步执行的。只要侦听到数据变化，Vue 将开启一个事件队列，并缓冲在同一事件循环中发生的所有数据变更。如果同一个 watcher 被多次触发，只会被推入到事件队列中一次。这种在缓冲时去除重复数据对于避免不必要的计算和 DOM 操作是非常重要的。然后，在下一个的事件循环“tick”中，Vue 刷新事件队列并执行实际 (已去重的) 工作
+这里就涉及到Vue中对DOM的更新策略了，Vue 在更新 DOM 时是异步执行的。只要侦听到数据变化，Vue 将开启一个事件队列，并缓冲在同一事件循环中发生的所有数据变更。如果同一个 watcher 被多次触发，只会被推入到事件队列中一次。这种在缓冲时去除重复数据对于避免不必要的计算和 DOM 操作是非常重要的。然后，在下一个的事件循环“ ”中，Vue 刷新事件队列并执行实际 (已去重的) 工作
 
 
 ##### vue nextTick如何实现（）
 
 能力检测
 根据能力检测以不同方式执行回调队列
+通俗理解就是将回调函数放入当前执行的事件队列之后
 
 ---有一个定义好的flushCallbacks函数用来执行callbacks里的所有回调函数
 ---还有一个执行函数timerFunc。 Vue 在内部对异步队列其实是做了四个判断，对当前环境进行不断的降级处理，尝试使用原生的Promise.then、MutationObserver和setImmediate，上述三个都不支持最后使用setTimeout，将执行函数timerFunc放入执行任务中
@@ -88,7 +94,7 @@ patchVnode函数作用：
 
 
 watcher 被添加进依赖时机？
-除了computedwatcher 其他的都是在new Watcher时 调用get方法时 读取了依赖的属性时 参照下行
+除了computedwatcher 其他的都是在new Watcher时 自动调用get方法时 读取了依赖的属性时 参照下行
 回顾一下我们在数据侦测篇文章中介绍Watcher类的时候，Watcher类构造函数的第二个参数支持两种类型：函数和数据路径（如a.b.c）。如果是数据路径，会根据路径去读取这个数据；如果是函数，会执行这个函数。一旦读取了数据或者执行了函数，就会触发数据或者函数内数据的getter方法，而在getter方法中会将watcher实例添加到该数据的依赖列表中，当该数据发生变化时就会通知依赖列表中所有的依赖，依赖接收到通知后通知更新视图
 
 ##### vue watch  --->renderdwatcher
@@ -261,6 +267,51 @@ function createWatcher (vm, expOrFn, handler, options) {
     }
   }
 
+
+##### watcher.update()
+除了computer watcher 其他的render、userWatcher通知更新都是queueWatcher方法 将watcher对应的回调函数依次放进queue队列（更新队列）-》queueWatcher最后将所有回调都放入异步队列执行 
+
+export function queueWatcher (watcher: Watcher) {
+  const id = watcher.id
+  if (has[id] == null) {
+    has[id] = true    //true 表示在队列中但并未更新 undefined 表示未加入队列 null表示在队列中且已经被更新了或正在更新
+    if (!flushing) {  //undefined情况
+      queue.push(watcher)
+    } else {
+      // null表示在队列中且已经被更新了或正在更新
+      let i = queue.length - 1
+      while (i > index && queue[i].id > watcher.id) {
+        i--
+      }
+      queue.splice(i + 1, 0, watcher)
+    }
+    // queue the flush
+    if (!waiting) {
+      waiting = true
+
+      if (process.env.NODE_ENV !== 'production' && !config.async) {
+        flushSchedulerQueue()
+        return
+      }
+      nextTick(flushSchedulerQueue)
+    }
+  }
+}
+function flushSchedulerQueue () {
+  currentFlushTimestamp = getNow()
+  flushing = true
+  let watcher, id
+  queue.sort((a, b) => a.id - b.id)
+  for (index = 0; index < queue.length; index++) {
+    watcher = queue[index]
+    if (watcher.before) {
+      watcher.before()
+    }
+    id = watcher.id
+    has[id] = null
+    watcher.run()   //最后执行 watcher.run()
+    .....
+  }
 
 ##### $on 
 $on和$emit这两个方法的内部原理是设计模式中最典型的发布订阅模式，首先定义一个事件中心，通过$on订阅事件，将事件存储在事件中心里面，然后通过$emit触发事件中心里面存储的订阅事件
@@ -478,7 +529,8 @@ https://vue-js.com/learn-vue/directives/customDirectives.html#_2-%E4%BD%95%E6%97
 ##### keep-alive
 https://vue-js.com/learn-vue/BuiltInComponents/keep-alive.html#_3-%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86
 
-//遍历获取每个缓存组件的name  调用pruneCacheEntry销毁不符合匹配的组件
+//遍历获取每个缓存组件的name 匹配是否满足include+exclude 
+// 不匹配就调用pruneCacheEntry销毁不符合匹配的组件
 function pruneCache (keepAliveInstance, filter) {
   const { cache, keys, _vnode } = keepAliveInstance
   for (const key in cache) {
@@ -610,7 +662,7 @@ export default {
   }).$mount("#app");
 步骤四:添加路由视图，App.vue 
  <router-view></router-view>
- 实现install方法，如何注册$router？
+模拟实现install方法，如何注册$router？
 就是刚开始Vue.use(Router)的时候，Router实例还没有创建，无法访问路由相关信息
 所以Router实例创建完成后在main.js引入并添加到根组件
 vue-router实现了一个延时的全局混入beforeCreate生命周期 
@@ -633,7 +685,7 @@ Vue.mixin({
 
 
 
-##### vue 响应式数据原理
+##### vue2x 响应式数据原理
 export function defineReactive (
   obj: Object,
   key: string,

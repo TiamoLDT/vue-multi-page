@@ -9,23 +9,23 @@
     <h5>直接提交mutations方式</h5>
 
     <br />
-    <button @click="add">直接提交mutations --- state.number++</button>
+    <button @click="add">add直接提交mutations --- state.number++</button>
     <br />
-    <button @click="add2">提交载荷方式 --- state.number++</button>
+    <button @click="add2">add2提交载荷方式 --- state.number++</button>
     <br />
-    <button @click="add3">对象风格的提交方式 --- state.number++</button>
+    <button @click="add3">add3对象风格的提交方式 --- state.number++</button>
     <br />
-    <button @click="add4(2)">辅助函数无映射 --- state.number++2</button>
+    <button @click="add4(2)">add4辅助函数无映射 --- state.number++2</button>
     <br />
-    <button @click="add5(3)">辅助函数 映射 --- state.number++3</button>
+    <button @click="add5(3)">add5辅助函数 映射 --- state.number++3</button>
     <br />
 
     <h5>actions分发mutations方式</h5>
-    <button @click="cut">actions 提交到mutations --- state.number--</button>
-    <button @click="cut2">actions 提交到mutations --- state.number--</button>
-    <button @click="cut3">actions 提交到mutations --- state.number--2</button>
-    <button @click="cut4(2)">actions 提交到mutations --- state.number--2</button>
-    <button @click="cut5(2)">actions 提交到mutations --- state.number--2</button>
+    <button @click="cut">cut actions 提交到mutations --- state.number--</button>
+    <button @click="cut2">cut2 actions 提交到mutations --- state.number--</button>
+    <button @click="cut3">cut3 actions 提交到mutations --- state.number--2</button>
+    <button @click="cut4(2)">cut4 actions 提交到mutations --- state.number--2</button>
+    <button @click="cut5(2)">cut5 actions 提交到mutations --- state.number--2</button>
 
     <h5>getter部分</h5>
     <div>直接获取doneTodos：{{doneTodos}}</div>
@@ -109,12 +109,12 @@ export default {
       //直接获取
       return this.$store.getters.doneTodos;
     },
-    ...mapGetters([
-      "doneTodos2" //跟上行比较没有映射情况
-    ]),
     ...mapGetters({
       doneTodos1: "doneTodos" // 把 `this.doneTodo` 映射为 `this.$store.getters.doneTodos
-    })
+    }),
+    ...mapGetters([
+      "doneTodos2" //跟上行比较没有映射情况
+    ])
     
   }
 };

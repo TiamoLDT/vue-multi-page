@@ -24,6 +24,7 @@ export default new Vuex.Store({
     },
     //对象风格的提交方式 跟提交载荷方式接收参数一样
     add3(state,payload){
+      console.log('add3',payload)
       state.number += payload.num
     },
     add4(state,num){
